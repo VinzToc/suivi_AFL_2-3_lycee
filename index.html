@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto-Évaluation AFL 2 et 3</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 10px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 15px;
+            max-width: 1200px;
+            margin: 0 auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+            min-height: calc(100vh - 20px);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        h1 {
+            color: #667eea;
+            font-size: 20px;
+            margin-bottom: 3px;
+            flex: 1;
+            text-align: center;
+        }
+        
+        .import-button {
+            background: #45b7d1;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .import-button:hover {
+            background: #3a9bb8;
+        }
+        
+        .import-button.secondary {
+            background: #764ba2;
+        }
+        
+        .import-button.secondary:hover {
+            background: #5a3880;
+        }
+        
+        #csvFileInput, #xlsxFileInput {
+            display: none;
+        }
+        
+        .import-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .info-section {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+        
+        .student-info {
+            background: #e8f0fe;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            padding: 10px 15px;
+            margin-bottom: 10px;
+            display: none;
+        }
+        
+        .student-info.active {
+            display: block;
+        }
+        
+        .student-info h3 {
+            color: #667eea;
+            margin: 0 0 5px 0;
+            font-size: 14px;
+        }
+        
+        .student-info p {
+            margin: 0;
+            font-size: 13px;
+            color: #333;
+        }
+        
+        .history-section {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+            display: none;
+        }
+        
+        .history-section.active {
+            display: block;
+        }
+        
+        .history-section h4 {
+            color: #856404;
+            margin: 0 0 8px 0;
+            font-size: 13px;
+        }
+        
+        .history-item {
+            background: white;
+            padding: 5px 8px;
+            margin-bottom: 5px;
+            border-radius: 5px;
+            font-size: 12px;
+            border-left: 3px solid #ffc107;
+        }
+        
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        label {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 4px;
+            font-size: 12px;
+        }
+        
+        input[type="text"], input[type="date"], select {
+            padding: 6px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 13px;
+            transition: border-color 0.3s;
+            background: white;
+        }
+        
+        input[type="text"]:focus, input[type="date"]:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        select {
+            cursor: pointer;
+        }
+        
+        .points-section {
+            background: #f8f9ff;
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .points-title {
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+        
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .slider-wrapper {
+            flex: 1;
+            position: relative;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: linear-gradient(to right, #667eea 0%, #764ba2 100%);
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        .slider-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 5px;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .points-display {
+            background: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            color: #667eea;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            min-width: 150px;
+            text-align: center;
+        }
+        
+        .evaluation-section {
+            flex: 1;
+            margin-bottom: 10px;
+        }
+        
+        .afl-group {
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .afl-title {
+            background: #667eea;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .item-row {
+            margin-bottom: 10px;
+            padding: 8px;
+            background: #f8f9ff;
+            border-radius: 8px;
+        }
+        
+        .item-label {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 6px;
+            font-size: 13px;
+        }
+        
+        .item-input {
+            padding: 6px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: bold;
+            margin-bottom: 6px;
+            transition: border-color 0.3s;
+        }
+        
+        .item-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .level-slider {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .level-slider-wrapper {
+            flex: 1;
+            position: relative;
+            padding: 8px 0;
+        }
+        
+        .level-range {
+            width: 100%;
+            height: 10px;
+            border-radius: 5px;
+            background: linear-gradient(to right, #ff6b6b 0%, #ffa500 33%, #4ecdc4 66%, #45b7d1 100%);
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        .level-range::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: white;
+            border: 4px solid #667eea;
+            cursor: pointer;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+        }
+        
+        .level-range::-moz-range-thumb {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: white;
+            border: 4px solid #667eea;
+            cursor: pointer;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+        }
+        
+        .level-marks {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 5px;
+            position: relative;
+        }
+        
+        .level-mark {
+            font-size: 13px;
+            font-weight: bold;
+            color: #333;
+            position: absolute;
+        }
+        
+        .level-mark::before {
+            content: '';
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 2px;
+            height: 10px;
+            background: #333;
+        }
+        
+        .level-mark:nth-child(1) {
+            left: 0;
+            transform: translateX(0);
+        }
+        
+        .level-mark:nth-child(1)::before {
+            left: 0;
+            transform: translateX(0);
+        }
+        
+        .level-mark:nth-child(2) {
+            left: 33.33%;
+            transform: translateX(-50%);
+        }
+        
+        .level-mark:nth-child(3) {
+            left: 66.66%;
+            transform: translateX(-50%);
+        }
+        
+        .level-mark:nth-child(4) {
+            right: 0;
+            left: auto;
+            transform: translateX(0);
+        }
+        
+        .level-mark:nth-child(4)::before {
+            left: auto;
+            right: 0;
+            transform: translateX(0);
+        }
+        
+        .level-value {
+            background: #667eea;
+            color: white;
+            padding: 8px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            min-width: 100px;
+            text-align: center;
+            font-size: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        .export-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 35px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .export-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+        
+        .export-button:active {
+            transform: translateY(0);
+        }
+        
+        .button-container {
+            text-align: center;
+            padding-top: 8px;
+            border-top: 2px solid #e0e0e0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div style="width: 200px;"></div>
+            <h1>AUTO-ÉVALUATION AFL 2 ET 3</h1>
+            <div class="import-buttons">
+                <input type="file" id="csvFileInput" accept=".csv" onchange="handleCSVImport(event)">
+                <button class="import-button" onclick="document.getElementById('csvFileInput').click()">
+                    📋 Importer CSV
+                </button>
+                <input type="file" id="xlsxFileInput" accept=".xlsx" onchange="handleXLSXImport(event)">
+                <button class="import-button secondary" onclick="document.getElementById('xlsxFileInput').click()">
+                    📊 Importer Excel
+                </button>
+            </div>
+        </div>
+        
+        <div class="student-info" id="studentInfo">
+            <h3>ÉLÈVE : <span id="studentName"></span> - CLASSE : <span id="studentClass"></span></h3>
+        </div>
+        
+        <div class="history-section" id="historySection">
+            <h4>📜 HISTORIQUE DES ÉVALUATIONS :</h4>
+            <div id="historyContent"></div>
+        </div>
+        
+        <div class="info-section">
+            <div class="input-group">
+                <label for="eleve">ÉLÈVES :</label>
+                <select id="eleve">
+                    <option value="">-- Sélectionner un élève --</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label for="classe">CLASSE :</label>
+                <input type="text" id="classe" placeholder="Classe">
+            </div>
+            <div class="input-group">
+                <label for="date">DATE :</label>
+                <input type="date" id="date">
+            </div>
+        </div>
+        
+        <div class="points-section">
+            <div class="points-title">CHOIX DE RÉPARTITION DES POINTS ENTRE AFL 2 ET 3 :</div>
+            <div class="slider-container">
+                <div class="slider-wrapper">
+                    <input type="range" id="pointsSlider" min="0" max="2" value="1" step="1">
+                    <div class="slider-labels">
+                        <span>AFL2=6pts / AFL3=2pts</span>
+                        <span>AFL2=4pts / AFL3=4pts</span>
+                        <span>AFL2=2pts / AFL3=6pts</span>
+                    </div>
+                </div>
+                <div class="points-display" id="pointsDisplay">
+                    AFL2 = 4pts / AFL3 = 4pts
+                </div>
+            </div>
+        </div>
+        
+        <div class="evaluation-section">
+            <div class="afl-group">
+                <div class="afl-title">AFL 2</div>
+                <div class="item-row">
+                    <input type="text" class="item-input" id="afl2_preparer_label" placeholder="Nom de l'item 1">
+                    <div class="level-slider">
+                        <div class="level-slider-wrapper">
+                            <input type="range" class="level-input level-range" id="afl2_preparer" min="1" max="4" value="1" step="1">
+                            <div class="level-marks">
+                                <div class="level-mark">1</div>
+                                <div class="level-mark">2</div>
+                                <div class="level-mark">3</div>
+                                <div class="level-mark">4</div>
+                            </div>
+                        </div>
+                        <div class="level-value" id="afl2_preparer_val">Niveau 1</div>
+                    </div>
+                </div>
+                <div class="item-row">
+                    <input type="text" class="item-input" id="afl2_entrainer_label" placeholder="Nom de l'item 2">
+                    <div class="level-slider">
+                        <div class="level-slider-wrapper">
+                            <input type="range" class="level-input level-range" id="afl2_entrainer" min="1" max="4" value="1" step="1">
+                            <div class="level-marks">
+                                <div class="level-mark">1</div>
+                                <div class="level-mark">2</div>
+                                <div class="level-mark">3</div>
+                                <div class="level-mark">4</div>
+                            </div>
+                        </div>
+                        <div class="level-value" id="afl2_entrainer_val">Niveau 1</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="afl-group">
+                <div class="afl-title">AFL 3</div>
+                <div class="item-row">
+                    <input type="text" class="item-input" id="afl3_echauffement_label" placeholder="Nom de l'item 1">
+                    <div class="level-slider">
+                        <div class="level-slider-wrapper">
+                            <input type="range" class="level-input level-range" id="afl3_echauffement" min="1" max="4" value="1" step="1">
+                            <div class="level-marks">
+                                <div class="level-mark">1</div>
+                                <div class="level-mark">2</div>
+                                <div class="level-mark">3</div>
+                                <div class="level-mark">4</div>
+                            </div>
+                        </div>
+                        <div class="level-value" id="afl3_echauffement_val">Niveau 1</div>
+                    </div>
+                </div>
+                <div class="item-row">
+                    <input type="text" class="item-input" id="afl3_observateur_label" placeholder="Nom de l'item 2">
+                    <div class="level-slider">
+                        <div class="level-slider-wrapper">
+                            <input type="range" class="level-input level-range" id="afl3_observateur" min="1" max="4" value="1" step="1">
+                            <div class="level-marks">
+                                <div class="level-mark">1</div>
+                                <div class="level-mark">2</div>
+                                <div class="level-mark">3</div>
+                                <div class="level-mark">4</div>
+                            </div>
+                        </div>
+                        <div class="level-value" id="afl3_observateur_val">Niveau 1</div>
+                    </div>
+                </div>
+                <div class="item-row">
+                    <input type="text" class="item-input" id="afl3_coach_label" placeholder="Nom de l'item 3">
+                    <div class="level-slider">
+                        <div class="level-slider-wrapper">
+                            <input type="range" class="level-input level-range" id="afl3_coach" min="1" max="4" value="1" step="1">
+                            <div class="level-marks">
+                                <div class="level-mark">1</div>
+                                <div class="level-mark">2</div>
+                                <div class="level-mark">3</div>
+                                <div class="level-mark">4</div>
+                            </div>
+                        </div>
+                        <div class="level-value" id="afl3_coach_val">Niveau 1</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="button-container">
+            <button class="export-button" onclick="exportToExcel()">📊 EXPORTER EN EXCEL</button>
+        </div>
+    </div>
+
+    <script>
+        // Liste des élèves et données existantes
+        let elevesList = [];
+        let existingData = [];
+        let currentEleve = '';
+        let currentClasse = '';
+        
+        // Initialiser la date du jour
+        document.getElementById('date').valueAsDate = new Date();
+        
+        // Gestion de l'import CSV (liste d'élèves)
+        function handleCSVImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            Papa.parse(file, {
+                complete: function(results) {
+                    const select = document.getElementById('eleve');
+                    
+                    // Récupérer les données de la colonne A (index 0)
+                    results.data.forEach((row, index) => {
+                        if (row[0] && row[0].trim() !== '') {
+                            const eleveName = row[0].trim();
+                            if (!elevesList.includes(eleveName)) {
+                                elevesList.push(eleveName);
+                                const option = document.createElement('option');
+                                option.value = eleveName;
+                                option.textContent = eleveName;
+                                select.appendChild(option);
+                            }
+                        }
+                    });
+                    
+                    // Réinitialiser les données existantes
+                    existingData = [];
+                    document.getElementById('studentInfo').classList.remove('active');
+                    document.getElementById('historySection').classList.remove('active');
+                    
+                    alert(`${elevesList.length} élève(s) importé(s) avec succès !`);
+                },
+                error: function(error) {
+                    alert('Erreur lors de l\'import du fichier CSV : ' + error.message);
+                }
+            });
+            
+            // Réinitialiser l'input
+            event.target.value = '';
+        }
+        
+        // Gestion de l'import XLSX (fichier d'évaluation existant)
+        function handleXLSXImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+                    
+                    // Extraire le nom de l'élève et la classe depuis le nom du fichier
+                    // Format attendu : AFL_Evaluation-NOM_PRENOM-CLASSE.xlsx
+                    const fileName = file.name.replace('.xlsx', '');
+                    const parts = fileName.split('-');
+                    
+                    if (parts.length >= 3) {
+                        currentEleve = parts[1]; // NOM_PRENOM
+                        currentClasse = parts[2]; // CLASSE
+                        
+                        // Afficher les infos de l'élève
+                        document.getElementById('studentName').textContent = currentEleve;
+                        document.getElementById('studentClass').textContent = currentClasse;
+                        document.getElementById('studentInfo').classList.add('active');
+                        
+                        // Masquer les champs élève et classe
+                        document.getElementById('eleve').style.display = 'none';
+                        document.getElementById('classe').style.display = 'none';
+                        document.querySelector('label[for="eleve"]').style.display = 'none';
+                        document.querySelector('label[for="classe"]').style.display = 'none';
+                        
+                        // Stocker les données existantes (sans la ligne d'en-tête)
+                        existingData = jsonData.slice(1);
+                        
+                        // Afficher l'historique
+                        displayHistory();
+                        
+                        alert(`Fichier importé avec succès ! ${existingData.length} évaluation(s) trouvée(s).`);
+                    } else {
+                        alert('Format de nom de fichier incorrect. Le fichier doit être nommé : AFL_Evaluation-NOM_PRENOM-CLASSE.xlsx');
+                    }
+                } catch (error) {
+                    alert('Erreur lors de la lecture du fichier Excel : ' + error.message);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+            
+            // Réinitialiser l'input
+            event.target.value = '';
+        }
+        
+        // Afficher l'historique des évaluations
+        function displayHistory() {
+            const historyContent = document.getElementById('historyContent');
+            historyContent.innerHTML = '';
+            
+            if (existingData.length === 0) {
+                historyContent.innerHTML = '<div class="history-item">Aucune évaluation précédente</div>';
+            } else {
+                existingData.forEach((row, index) => {
+                    const date = row[0] || '';
+                    const points = row[1] || '';
+                    const historyItem = document.createElement('div');
+                    historyItem.className = 'history-item';
+                    historyItem.innerHTML = `<strong>Éval. ${index + 1}</strong> - ${date} | ${points} | AFL2: ${row[2]},${row[3]} | AFL3: ${row[4]},${row[5]},${row[6]}`;
+                    historyContent.appendChild(historyItem);
+                });
+            }
+            
+            document.getElementById('historySection').classList.add('active');
+        }
+        
+        // Gestion du slider de répartition des points
+        const pointsSlider = document.getElementById('pointsSlider');
+        const pointsDisplay = document.getElementById('pointsDisplay');
+        const pointsOptions = [
+            'AFL2 = 6pts / AFL3 = 2pts',
+            'AFL2 = 4pts / AFL3 = 4pts',
+            'AFL2 = 2pts / AFL3 = 6pts'
+        ];
+        
+        pointsSlider.addEventListener('input', function() {
+            pointsDisplay.textContent = pointsOptions[this.value];
+        });
+        
+        // Gestion des sliders de niveaux
+        const levelInputs = document.querySelectorAll('.level-input');
+        levelInputs.forEach(input => {
+            input.addEventListener('input', function() {
+                const valueDisplay = document.getElementById(this.id + '_val');
+                valueDisplay.textContent = 'Niveau ' + this.value;
+            });
+        });
+        
+        // Fonction d'export Excel (.xlsx)
+        function exportToExcel() {
+            // Déterminer l'élève et la classe
+            let eleve, classe;
+            
+            if (currentEleve) {
+                // Mode import Excel - utiliser les données importées
+                eleve = currentEleve;
+                classe = currentClasse;
+            } else {
+                // Mode normal - utiliser les champs du formulaire
+                eleve = document.getElementById('eleve').value || 'Eleve';
+                classe = document.getElementById('classe').value || 'Classe';
+            }
+            
+            const dateInput = document.getElementById('date').value || '';
+            
+            // Conversion de la date au format JJ/MM/AA
+            let dateFormatted = '';
+            if (dateInput) {
+                const dateObj = new Date(dateInput);
+                const jour = String(dateObj.getDate()).padStart(2, '0');
+                const mois = String(dateObj.getMonth() + 1).padStart(2, '0');
+                const annee = String(dateObj.getFullYear()).slice(-2);
+                dateFormatted = `${jour}/${mois}/${annee}`;
+            }
+            
+            // Récupération du choix de répartition des points
+            const pointsChoice = pointsOptions[pointsSlider.value];
+            
+            // Récupération des niveaux AFL 2
+            const afl2_item1 = document.getElementById('afl2_preparer').value;
+            const afl2_item2 = document.getElementById('afl2_entrainer').value;
+            
+            // Récupération des niveaux AFL 3
+            const afl3_item1 = document.getElementById('afl3_echauffement').value;
+            const afl3_item2 = document.getElementById('afl3_observateur').value;
+            const afl3_item3 = document.getElementById('afl3_coach').value;
+            
+            // Création du tableau avec en-têtes
+            const data = [
+                ['Date', 'Répartition Points', 'AFL2 Item 1', 'AFL2 Item 2', 'AFL3 Item 1', 'AFL3 Item 2', 'AFL3 Item 3']
+            ];
+            
+            // Ajouter les données existantes
+            if (existingData.length > 0) {
+                existingData.forEach(row => {
+                    data.push(row);
+                });
+            }
+            
+            // Ajouter la nouvelle évaluation
+            data.push([dateFormatted, pointsChoice, afl2_item1, afl2_item2, afl3_item1, afl3_item2, afl3_item3]);
+            
+            // Création du workbook et de la feuille
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            
+            // Ajout de la feuille au workbook
+            XLSX.utils.book_append_sheet(wb, ws, "Evaluation AFL");
+            
+            // Export du fichier avec le nouveau format : AFL_Evaluation-NOM_PRENOM-CLASSE.xlsx
+            const filename = `AFL_Evaluation-${eleve}-${classe}.xlsx`;
+            XLSX.writeFile(wb, filename);
+            
+            alert('Fichier exporté avec succès !');
+        }
+    </script>
+</body>
+</html>
